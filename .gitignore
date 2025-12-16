@@ -1,0 +1,13 @@
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Cache directories
+__pycache__/
+cache/
+*.py[cod]
+
+# Documentation
+Docs/
+
+venv/
+Dataset.zip
