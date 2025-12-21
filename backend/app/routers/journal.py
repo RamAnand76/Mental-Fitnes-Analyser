@@ -1,0 +1,52 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
+from app import schemas, models
+from app.database import get_db
+from app.dependencies import get_current_user
+
+router = APIRouter(
+    prefix="/journals",
+    tags=["Journals"]
+)
+
+@router.get("/", response_model=List[schemas.Journal])
+def get_journals(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.Journal).filter(models.Journal.user_id == current_user.id).all()
+
+@router.post("/", response_model=schemas.Journal)
+def create_journal(journal: schemas.JournalCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    new_journal = models.Journal(**journal.dict(), user_id=current_user.id)
+    db.add(new_journal)
+    db.commit()
+    db.refresh(new_journal)
+    return new_journal
+
+@router.get("/{journal_id}", response_model=schemas.Journal)
+def get_journal(journal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    journal = db.query(models.Journal).filter(models.Journal.id == journal_id, models.Journal.user_id == current_user.id).first()
+    if not journal:
+        raise HTTPException(status_code=404, detail="Journal not found")
+    return journal
+
+@router.delete("/{journal_id}")
+def delete_journal(journal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    journal = db.query(models.Journal).filter(models.Journal.id == journal_id, models.Journal.user_id == current_user.id).first()
+    if not journal:
+        raise HTTPException(status_code=404, detail="Journal not found")
+    
+    db.delete(journal)
+    db.commit()
+    return {"message": "Journal deleted successfully"}
+
+@router.put("/{journal_id}", response_model=schemas.Journal)
+def update_journal(journal_id: int, journal_update: schemas.JournalCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    journal = db.query(models.Journal).filter(models.Journal.id == journal_id, models.Journal.user_id == current_user.id).first()
+    if not journal:
+        raise HTTPException(status_code=404, detail="Journal not found")
+    
+    journal.content = journal_update.content
+    journal.mood_score = journal_update.mood_score
+    db.commit()
+    db.refresh(journal)
+    return journal
