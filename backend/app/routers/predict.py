@@ -12,6 +12,8 @@ router = APIRouter(
     tags=["Prediction"]
 )
 
+import os
+
 # Global variables for model and encoders
 model = None
 encoders = None
@@ -21,14 +23,22 @@ def load_prediction_models():
     global model, encoders
     try:
         logger.info("Loading model artifacts...")
-        # Path assumes we are running from backend/ root
-        model = joblib.load('mental_health_osmi_model.pkl')
-        encoders = joblib.load('osmi_encoders.pkl')
+        # Construct absolute path to backend/
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        model_path = os.path.join(BASE_DIR, 'mental_health_osmi_model.pkl')
+        encoders_path = os.path.join(BASE_DIR, 'osmi_encoders.pkl')
+        
+        logger.info(f"Looking for model at: {model_path}")
+        
+        if not os.path.exists(model_path):
+             logger.error(f"❌ Model file not found at {model_path}")
+             return
+
+        model = joblib.load(model_path)
+        encoders = joblib.load(encoders_path)
         logger.info("✅ Model and encoders loaded successfully")
     except Exception as e:
         logger.error(f"❌ Error loading models: {e}")
-        # We don't exit here to allow app to start even if model fails, 
-        # but endpoints will fail. Ideally handle better.
 
 @router.post("/predict", response_model=schemas.PredictionResponse)
 async def predict_mental_health(survey: schemas.SurveyResponse):
