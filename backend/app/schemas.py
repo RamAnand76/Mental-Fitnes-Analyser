@@ -28,16 +28,21 @@ class TokenData(BaseModel):
 # Journal Schemas
 class JournalBase(BaseModel):
     content: str
-    mood_score: Optional[float] = None
 
 class JournalCreate(JournalBase):
-    pass
+    entry_date: Optional[str] = None # YYYY-MM-DD
+    entry_time: Optional[str] = None # HH:MM
 
 class Journal(JournalBase):
     id: int
     user_id: int
+    mood_score: Optional[float] = None
     sentiment_label: Optional[str] = None
     created_at: datetime
+    
+    @property
+    def formatted_date(self) -> str:
+        return self.created_at.strftime("%Y-%m-%d %H:%M")
     
     class Config:
         from_attributes = True

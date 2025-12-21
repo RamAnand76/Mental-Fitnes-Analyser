@@ -21,11 +21,22 @@ def create_journal(journal: schemas.JournalCreate, db: Session = Depends(get_db)
     # Auto-analyze sentiment
     sentiment = analyze_sentiment(journal.content)
     
+    # Handle custom date/time
+    created_at = datetime.utcnow()
+    if journal.entry_date:
+        try:
+            d = datetime.strptime(journal.entry_date, "%Y-%m-%d").date()
+            t = datetime.strptime(journal.entry_time, "%H:%M").time() if journal.entry_time else datetime.min.time()
+            created_at = datetime.combine(d, t)
+        except ValueError:
+            pass # Fallback to now if format is wrong
+            
     new_journal = models.Journal(
-        **journal.dict(), 
+        content=journal.content,
         user_id=current_user.id,
         mood_score=sentiment["score"],
-        sentiment_label=sentiment["label"]
+        sentiment_label=sentiment["label"],
+        created_at=created_at
     )
     db.add(new_journal)
     db.commit()
@@ -56,7 +67,12 @@ def update_journal(journal_id: int, journal_update: schemas.JournalCreate, db: S
         raise HTTPException(status_code=404, detail="Journal not found")
     
     journal.content = journal_update.content
-    journal.mood_score = journal_update.mood_score
+    
+    # Re-analyze sentiment since content changed
+    sentiment = analyze_sentiment(journal.content)
+    journal.mood_score = sentiment["score"]
+    journal.sentiment_label = sentiment["label"]
+    
     db.commit()
     db.refresh(journal)
     return journal

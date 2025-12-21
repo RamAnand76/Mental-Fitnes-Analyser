@@ -1,116 +1,121 @@
 # Mental Health Tracker API - Backend
 
-This directory contains the backend API for the Mental Health Tracker application. All the API source code, including the model and server configuration, resides inside the `backend/` folder. It is built using **FastAPI** and uses a pre-trained **Random Forest Classifier** to predict whether a user needs mental health treatment based on their survey responses.
+This backend API analyzes mental fitness, tracks user moods, and provides AI-powered insights. It is a comprehensive mental health platform built for modern needs.
 
-## 🚀 Project Setup
+## 🌟 Key Features
 
-Follow these steps to set up and run the backend server locally.
+1.  **Mental Health Prediction (ML)**
+    *   Uses a **Random Forest Classifier** to analyze survey data (OSMI 2014) and predict if a user needs professional treatment.
+    *   Reach: 80%+ Accuracy.
 
-### Prerequisites
+2.  **Smart Journaling (NLP)**
+    *   Private, secure journals for users.
+    *   **Auto-Sentiment Analysis**: Uses **VADER** (Valence Aware Dictionary and sEntiment Reasoner) to automatically score every entry as Positive, Negative, or Neutral.
+    *   Tracks mood trends over time.
 
-- Python 3.9 or higher
-- `pip` (Python package manager)
+3.  **AI Insights (LLM)**
+    *   Powered by **Google Gemini AI**.
+    *   Generates personalized Weekly/Monthly wellness reports based on your journal history.
+    *   Provides actionable advice and summarizes recurring themes in your life.
 
-### 1. Create a Virtual Environment (Optional but Recommended)
+4.  **Secure Authentication**
+    *   Full user management (Signup/Login).
+    *   **JWT (JSON Web Tokens)** for stateless, secure API access.
+    *   Password hashing using **Bcrypt**.
 
-It is best practice to run Python projects in a virtual environment to manage dependencies locally.
+---
+
+## 🛠️ Tech Stack
+
+*   **Framework**: FastAPI (Python)
+*   **Database**: PostgreSQL (via SQLAlchemy ORM)
+*   **Authentication**: OAuth2 with JWT
+*   **Machine Learning**: Scikit-Learn (Random Forest)
+*   **NLP**: VADER Sentiment Analysis
+*   **Generative AI**: Google Gemini Pro
+
+---
+
+## 🚀 Setup Guide
+
+### 1. Prerequisites
+*   Python 3.9+
+*   PostgreSQL (Local or Docker)
+
+### 2. Installation
 
 ```bash
-# Windows
+# Clone and enter directory
+cd backend
+
+# Create virtual environment
 python -m venv venv
-.\venv\Scripts\activate
+.\venv\Scripts\activate  # Windows
+# source venv/bin/activate # Mac/Linux
 
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 2. Install Dependencies
-
-Install the required Python packages listed in `requirements.txt`.
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Run the Server
+### 3. Configuration (.env)
+Create a `.env` file in the `backend/` folder:
 
-You can run the server directly using Python or via Uvicorn.
+```env
+# Database Credentials
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password
+POSTGRES_SERVER=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=mental_health
 
-```bash
-# Option 1: Using Python
-python main.py
+# Security
+SECRET_KEY=your_super_secret_key_here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# Option 2: Using Uvicorn (with hot reload for development)
-uvicorn main:app --reload
+# AI Configuration
+GEMINI_API_KEY=your_gemini_api_key_from_google_ai_studio
 ```
 
-The server will start at `http://localhost:8000`.
+### 4. Database Setup
+The application automatically creates tables on startup. Just ensure the database (e.g., `mental_health`) exists in Postgres.
 
-- **API Documentation (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Alternative Documentation (ReDoc)**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+```sql
+CREATE DATABASE mental_health;
+```
 
----
-
-## 📂 Key Files & Dataset
-
-Here is a breakdown of the important files in this project:
-
-- **`backend/mental_health_osmi_model.pkl`**:
-  This is the trained **Random Forest Classifier** model saved as a serialized file. The API loads this file to make real-time predictions.
-
-- **`backend/osmi_encoders.pkl`**:
-  This file contains the **LabelEncoders** created during the training phase. It ensures that the user's input (string values like "Yes", "No", "Male") is converted into the exact same numerical format that the model was trained on.
-
-- **`survey.csv`** (in project root):
-  The raw dataset used to train the model. This is the **Open Sourcing Mental Illness (OSMI) Mental Health in Tech Survey 2014**. It contains the historical data from which the model learned the patterns connecting workplace factors to mental health needs.
-
-- **`backend/main.py`**:
-  The main source code for the FastAPI server. It handles the API endpoints, data validation, and connects the user's input to the model.
+### 5. Run Server
+```bash
+uvicorn app.main:app --reload
+```
+Open **[http://localhost:8000/docs](http://localhost:8000/docs)** for the interactive API documentation.
 
 ---
 
-## 🌲 Random Forest Classifier Model Explained
+## 📡 API Endpoints
 
-The core of this application is a **Random Forest Classifier**. Below is a detailed explanation of what this model is, how it works, and why it is effective for this specific problem.
+### Authentication
+*   `POST /auth/signup`: Register a new user.
+*   `POST /auth/login`: Login to get Access & Refresh Tokens.
+*   `POST /auth/refresh`: Get a new access token.
 
-### What is a Random Forest?
+### Journals
+*   `POST /journals/`: Add a daily entry (Auto-Analysis runs here).
+*   `GET /journals/`: View all entries.
+*   `GET /journals/insights/report`: **Get AI-generated Weekly/Monthly Report.**
 
-Random Forest is a popular **supervised machine learning algorithm** used for both classification and regression problems. It is an **ensemble learning** method, which means it combines multiple individual models to produce a single, stronger prediction.
+### Prediction
+*   `POST /predict`: Submit survey responses to get a Treatment recommendation.
 
-As the name suggests, it creates a "forest" of **Decision Trees**.
+---
 
-### How It Works
+## 🧠 AI Models Explained
 
-1.  **Decision Trees (The Building Blocks)**:
-    -   Imagine a flowchart where each question (e.g., "Do you work remotely?") splits the data into branches.
-    -   We keep asking questions until we reach a final decision (leaf node).
-    -   A single decision tree can be prone to *overfitting*—it might memorize the training data too well and fail on new data.
+### 1. Random Forest (Treatment Prediction)
+An ensemble learning method that uses multiple Decision Trees to determine if a user needs mental health treatment based on workplace and personal factors.
 
-2.  **The "Random" in Random Forest**:
-    -   **Bootstrapping (Bagging)**: Instead of training one tree on all the data, Random Forest creates many trees (e.g., 100 trees). Each tree is trained on a random subset of the data (sampled with replacement).
-    -   **Feature Randomness**: When splitting a node, instead of looking at *all* features to find the best split, the algorithm selects a random subset of features. This ensures that the trees are diverse and not correlated (i.e., they don't all make the same mistakes).
+### 2. VADER (Mood Analysis)
+A rule-based sentiment analysis tool specifically tuned for social media. It understands intensity ("really happy"), capitalization ("SAD"), and emojis, converting text into a numeric Mood Score (-1.0 to +1.0).
 
-3.  **Majority Voting (Aggregation)**:
-    -   When we want to make a prediction for a new user, we pass their data through *every* tree in the forest.
-    -   Each tree gives a "vote" (e.g., Tree 1 says "Treatment Needed", Tree 2 says "No Treatment").
-    -   The final output is determined by the **majority vote**. If 70 out of 100 trees say "Treatment Needed", the model predicts "Treatment Needed".
-
-### Why Random Forest for Mental Health Prediction?
-
-*   **Robustness**: By averaging many trees, it cancels out the errors and biases of individual trees, making it very stable.
-*   **Handles Categorical Data**: The mental health survey has many categorical fields (e.g., Gender, Yes/No questions), which Random Forest handles effectively (after encoding).
-*   **Feature Importance**: It can implicitly identify which questions (features) are most critical for predicting mental health needs (e.g., "Family History" might be a more important splitter than "Remote Work").
-*   **Non-Linear Relationships**: It can capture complex, non-linear patterns in the data that a simple linear model might miss.
-
-### Model Specifics in This Project
-
--   **Algorithm**: `sklearn.ensemble.RandomForestClassifier`
--   **Training Data**: OSMI Mental Health in Tech Survey 2014.
--   **Features Used**:
-    -   **Personal**: Age, Gender
-    -   **Work Environment**: Remote work, Tech company, Company size, Benefits, Wellness program, etc.
-    -   **Mental Health Context**: Family history, Work interference, Willingness to seek help.
--   **Prediction Output**:
-    -   **0 (No)**: Likely does not need immediate professional treatment.
-    -   **1 (Yes)**: Likely benefits from professional mental health treatment.
+### 3. Google Gemini (Wellness Reports)
+A Large Language Model (LLM) that reads your recent journal entries and synthesizes them into a coherent, empathetic summary with actionable mental health advice.
