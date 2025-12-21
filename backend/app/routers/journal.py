@@ -60,3 +60,31 @@ def update_journal(journal_id: int, journal_update: schemas.JournalCreate, db: S
     db.commit()
     db.refresh(journal)
     return journal
+
+from app.services.llm import generate_wellness_report
+from datetime import datetime, timedelta
+
+@router.get("/insights/report")
+def get_insights(period: str = "7d", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Generate a report for the user based on journals from the last 'period' days.
+    """
+    days = 30 if period == "30d" else 7
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    
+    # Fetch entries
+    entries = db.query(models.Journal).filter(
+        models.Journal.user_id == current_user.id,
+        models.Journal.created_at >= cutoff_date
+    ).all()
+    
+    if not entries:
+        return {"report": "No journal entries found for this period. Start writing to get insights!"}
+    
+    # Extract text content
+    text_content = [e.content for e in entries]
+    
+    # Generate report using LLM
+    report = generate_wellness_report(text_content)
+    
+    return {"report": report, "period": f"Last {days} days", "entries_analyzed": len(entries)}
