@@ -80,12 +80,7 @@ def update_journal(journal_id: int, journal_update: schemas.JournalCreate, db: S
 from app.services.llm import generate_wellness_report
 from datetime import datetime, timedelta
 
-@router.get("/insights/report")
-def get_insights(period: str = "7d", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Generate a report for the user based on journals from the last 'period' days.
-    """
-    days = 30 if period == "30d" else 7
+def generate_insights_logic(days: int, db: Session, current_user: models.User):
     cutoff_date = datetime.utcnow() - timedelta(days=days)
     
     # Fetch entries
@@ -95,7 +90,7 @@ def get_insights(period: str = "7d", db: Session = Depends(get_db), current_user
     ).all()
     
     if not entries:
-        return {"report": "No journal entries found for this period. Start writing to get insights!"}
+        return {"report": f"No journal entries found for the last {days} days. Start writing to get insights!"}
     
     # Extract text content
     text_content = [e.content for e in entries]
@@ -104,3 +99,25 @@ def get_insights(period: str = "7d", db: Session = Depends(get_db), current_user
     report = generate_wellness_report(text_content)
     
     return {"report": report, "period": f"Last {days} days", "entries_analyzed": len(entries)}
+
+@router.get("/insights/report")
+def get_custom_insights(period: str = "7d", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Generate a report for the user based on journals from the last 'period' days (e.g. '7d', '30d').
+    """
+    days = 30 if period == "30d" else 7
+    return generate_insights_logic(days, db, current_user)
+
+@router.get("/insights/weekly")
+def get_weekly_insights(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Generate a Weekly wellness report (Last 7 Days).
+    """
+    return generate_insights_logic(7, db, current_user)
+
+@router.get("/insights/monthly")
+def get_monthly_insights(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Generate a Monthly wellness report (Last 30 Days).
+    """
+    return generate_insights_logic(30, db, current_user)
