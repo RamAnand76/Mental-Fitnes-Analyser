@@ -36,6 +36,7 @@ class JournalCreate(JournalBase):
 class Journal(JournalBase):
     id: int
     user_id: int
+    sentiment_label: Optional[str] = None
     created_at: datetime
     
     class Config:

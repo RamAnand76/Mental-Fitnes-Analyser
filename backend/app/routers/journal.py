@@ -14,9 +14,19 @@ router = APIRouter(
 def get_journals(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return db.query(models.Journal).filter(models.Journal.user_id == current_user.id).all()
 
+from app.utils import analyze_sentiment
+
 @router.post("/", response_model=schemas.Journal)
 def create_journal(journal: schemas.JournalCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    new_journal = models.Journal(**journal.dict(), user_id=current_user.id)
+    # Auto-analyze sentiment
+    sentiment = analyze_sentiment(journal.content)
+    
+    new_journal = models.Journal(
+        **journal.dict(), 
+        user_id=current_user.id,
+        mood_score=sentiment["score"],
+        sentiment_label=sentiment["label"]
+    )
     db.add(new_journal)
     db.commit()
     db.refresh(new_journal)
