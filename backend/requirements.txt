@@ -16,3 +16,4 @@ python-dotenv
 email-validator
 vaderSentiment
 google-generativeai
+gunicorn
