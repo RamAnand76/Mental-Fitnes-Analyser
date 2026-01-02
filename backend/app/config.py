@@ -14,10 +14,12 @@ class Settings:
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "mental_health")
     
     # Construct DATABASE_URL if not explicitly provided
-    DATABASE_URL: str = os.getenv(
+    _raw_database_url: str = os.getenv(
         "DATABASE_URL",
         f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
+    # Render uses "postgres://" but SQLAlchemy requires "postgresql://"
+    DATABASE_URL: str = _raw_database_url.replace("postgres://", "postgresql://", 1) if _raw_database_url else ""
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecretkey")
     ALGORITHM: str = "HS256"
