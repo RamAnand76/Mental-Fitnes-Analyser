@@ -13,7 +13,7 @@ def generate_wellness_report(journal_entries: list[str]) -> str:
 
     try:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         
         # Construct prompt
         entries_text = "\n".join([f"- {entry}" for entry in journal_entries])
@@ -35,5 +35,5 @@ def generate_wellness_report(journal_entries: list[str]) -> str:
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        logger.error(f"Gemini API Error: {e}")
+        logger.error(f"Gemini API Error: {type(e).__name__}: {e}")
         return "Sorry, we currently cannot generate insights due to a service connection issue."
