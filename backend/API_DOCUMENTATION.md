@@ -426,7 +426,40 @@ Generate a monthly wellness report (last 30 days).
 
 #### `POST /predict`
 
-Predict mental health treatment needs based on a survey response.
+Predict mental health treatment needs based on a survey response. This endpoint uses a Random Forest classifier trained on the OSMI 2014 Mental Health in Tech Survey dataset.
+
+---
+
+##### Survey Questionnaire
+
+The following questions are presented to the user. Each question has specific valid options:
+
+| # | Question | Field Name | Valid Options |
+|---|----------|------------|---------------|
+| 1 | What is your age? | `Age` | Any integer (e.g., 25, 35, 45) |
+| 2 | What is your gender? | `Gender` | `Male`, `Female`, `Other` |
+| 3 | Do you have a family history of mental illness? | `family_history` | `Yes`, `No` |
+| 4 | If you have a mental health condition, does it interfere with your work? | `work_interfere` | `Often`, `Rarely`, `Never`, `Sometimes`, `Unknown` |
+| 5 | Are you self-employed? | `self_employed` | `Yes`, `No` |
+| 6 | How many employees does your company have? | `no_employees` | `1-5`, `6-25`, `26-100`, `100-500`, `500-1000`, `More than 1000` |
+| 7 | Do you work remotely at least 50% of the time? | `remote_work` | `Yes`, `No` |
+| 8 | Is your employer primarily a tech company/organization? | `tech_company` | `Yes`, `No` |
+| 9 | Does your employer provide mental health benefits? | `benefits` | `Yes`, `No`, `Don't know` |
+| 10 | Do you know the options for mental health care your employer provides? | `care_options` | `Yes`, `No`, `Not sure` |
+| 11 | Has your employer ever discussed mental health as part of a wellness program? | `wellness_program` | `Yes`, `No`, `Don't know` |
+| 12 | Does your employer provide resources to learn more about mental health issues and how to seek help? | `seek_help` | `Yes`, `No`, `Don't know` |
+| 13 | Is your anonymity protected if you choose to take advantage of mental health resources? | `anonymity` | `Yes`, `No`, `Don't know` |
+| 14 | How easy is it for you to take medical leave for a mental health condition? | `leave` | `Very easy`, `Somewhat easy`, `Somewhat difficult`, `Very difficult`, `Don't know` |
+| 15 | Do you think that discussing a mental health issue with your employer would have negative consequences? | `mental_health_consequence` | `Yes`, `No`, `Maybe` |
+| 16 | Do you think that discussing a physical health issue with your employer would have negative consequences? | `phys_health_consequence` | `Yes`, `No`, `Maybe` |
+| 17 | Would you be willing to discuss a mental health issue with your coworkers? | `coworkers` | `Yes`, `No`, `Some of them` |
+| 18 | Would you be willing to discuss a mental health issue with your direct supervisor? | `supervisor` | `Yes`, `No`, `Some of them` |
+| 19 | Would you bring up a mental health issue with a potential employer in an interview? | `mental_health_interview` | `Yes`, `No`, `Maybe` |
+| 20 | Would you bring up a physical health issue with a potential employer in an interview? | `phys_health_interview` | `Yes`, `No`, `Maybe` |
+| 21 | Do you feel that your employer takes mental health as seriously as physical health? | `mental_vs_physical` | `Yes`, `No`, `Don't know` |
+| 22 | Have you heard of or observed negative consequences for coworkers with mental health conditions in your workplace? | `obs_consequence` | `Yes`, `No` |
+
+---
 
 **Request Body (SurveyResponse):**
 
