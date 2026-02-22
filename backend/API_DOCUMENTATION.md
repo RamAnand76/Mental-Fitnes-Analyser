@@ -26,7 +26,10 @@ The Mental Health Tracker API provides a RESTful interface for:
 
 - **User Authentication**: Signup, login, token refresh, and logout.
 - **Journal Management**: Create, read, update, and delete personal journal entries with automatic sentiment analysis.
+- **Voice Journaling**: Audio recording upload and AI processing for Pitch, Speed, and dominant emotional labels.
+- **Wearable Integration**: Google OAuth 2.0 authorization and integration with Google Fit to store daily Steps and Resting Heart Rates.
 - **AI-Powered Insights**: Generate weekly/monthly wellness reports from journal entries using Google Gemini.
+- **Correlation Engine**: Algorithm to match physical tracking data against acoustic voice metrics.
 - **Mental Health Prediction**: Predict the likelihood of needing mental health treatment based on a survey using a Random Forest classifier.
 
 All protected endpoints require a **Bearer JWT token** in the `Authorization` header.
@@ -539,6 +542,96 @@ The following questions are presented to the user. Each question has specific va
 
 ---
 
+### Voice Endpoints
+
+---
+
+#### `POST /voice/upload`
+
+Upload a voice recording. The system will extract acoustic features (pitch, speed) via `librosa`, and output a dominant emotion prediction string via Hugging Face.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `user_id` | int  | Yes      | Internal ID of user uploading the file. |
+
+**Form Data (Multipart Upload):**
+
+| Field        | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `audio_file` | File   | Yes      | File body (.wav, .mp3, .m4a) |
+
+**Success Response (200 OK):**
+```json
+{
+  "message": "Voice journal analyzed successfully",
+  "insights": {
+    "journal_id": 12,
+    "emotion": "happy",
+    "confidence": 0.89,
+    "acoustics": {
+      "average_pitch_hz": 125.4,
+      "speaking_speed_bpm": 120.3
+    }
+  }
+}
+```
+
+---
+
+### Wearable Endpoints
+
+---
+
+#### `GET /wearables/auth/google/login`
+
+Initiate the Google OAuth 2.0 process for authorizing Google Fit parameters.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `user_id` | int  | Yes      | Your local system User ID. |
+
+**Success Response (200 OK):** Provides an `authorization_url` to direct the frontend window.
+
+#### `POST /wearables/sync`
+
+Pull user's Step Count and Resting Heart Rate averages for the current 24-hour cycle.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `user_id` | int  | Yes      | Your local system User ID. |
+
+**Success Response (200 OK):**
+```json
+{
+  "message": "Successfully synchronized Google Fit data",
+  "data": {
+    "steps": 10543,
+    "heart_rate": 65.5,
+    "date": "2026-02-22T13:45:00.000"
+  }
+}
+```
+
+---
+
+### Insights Endpoints
+
+---
+
+#### `GET /insights/correlations`
+
+Calculates localized Pearson correlations joining user Wearable logs (Steps, HR) against their Voice Acoustic data (Pitch, Speed). It requires a minimum of 3 overlapping day logs from both sets.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `user_id` | int  | Yes      | Your local system User ID. |
+
+**Success Response (200 OK):** Returns raw correlation matrices and natural language string outputs.
+
 ## Data Models (Schemas)
 
 ### User
@@ -567,6 +660,24 @@ The following questions are presented to the user. Each question has specific va
 | `mood_score`      | float    | Sentiment score (-1 to 1).                |
 | `sentiment_label` | string   | `Positive`, `Negative`, or `Neutral`.     |
 | `created_at`      | datetime | Entry creation timestamp.                 |
+
+### VoiceJournal
+
+| Field              | Type     | Description                                |
+| ------------------ | -------- | ------------------------------------------ |
+| `id`               | int      | Internal Database ID.                      |
+| `file_path`        | string   | Local path to audio.                       |
+| `pitch_mean`       | float    | F0 Hz Base Frequency via Librosa.          |
+| `speed_rate`       | float    | Speech Speed/BPM.                          |
+| `dominant_emotion` | string   | Result category of the HF transformer.     |
+
+### WearableData
+
+| Field                | Type     | Description                           |
+| -------------------- | -------- | ------------------------------------- |
+| `date`               | datetime | Timelog for values.                   |
+| `step_count`         | int      | Daily aggregated steps.               |
+| `resting_heart_rate` | float    | Overall average derived heart rate.   |
 
 ### PredictionResponse
 

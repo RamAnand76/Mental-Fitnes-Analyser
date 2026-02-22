@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, journal, predict
+from app.routers import auth, journal, predict, google_fit, voice, correlation
 from app.database import engine, Base
 from app.routers.predict import load_prediction_models
 
@@ -31,6 +31,9 @@ async def startup_event():
 app.include_router(auth.router)
 app.include_router(journal.router)
 app.include_router(predict.router)
+app.include_router(google_fit.router)
+app.include_router(voice.router)
+app.include_router(correlation.router)
 
 @app.get("/")
 def root():

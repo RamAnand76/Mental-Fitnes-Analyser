@@ -78,3 +78,12 @@ def signout():
     # Stateless JWTs cannot be truly invalidated server-side without a blacklist/DB.
     # We return a success message telling the client to discard the token.
     return {"message": "Successfully signed out"}
+
+@router.get("/users", response_model=list[schemas.User])
+def get_all_users(db: Session = Depends(get_db)):
+    """
+    Returns a list of all users.
+    NOTE: Unauthenticated endpoint meant purely for local debugging and testing.
+    """
+    users = db.query(models.User).all()
+    return users

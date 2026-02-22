@@ -12,6 +12,8 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     created_at: datetime
+    google_fit_connected: bool = False
+    
     
     class Config:
         from_attributes = True
@@ -43,6 +45,46 @@ class Journal(JournalBase):
     @property
     def formatted_date(self) -> str:
         return self.created_at.strftime("%Y-%m-%d %H:%M")
+    
+    class Config:
+        from_attributes = True
+
+# Voice Journal Schemas
+class VoiceJournalBase(BaseModel):
+    transcription: Optional[str] = None
+    pitch_mean: Optional[float] = None
+    speed_rate: Optional[float] = None
+    dominant_emotion: Optional[str] = None
+
+class VoiceJournalCreate(VoiceJournalBase):
+    file_path: str
+
+class VoiceJournal(VoiceJournalBase):
+    id: int
+    user_id: int
+    file_path: str
+    created_at: datetime
+    
+    @property
+    def formatted_date(self) -> str:
+        return self.created_at.strftime("%Y-%m-%d %H:%M")
+    
+    class Config:
+        from_attributes = True
+
+# Wearable Data Schemas
+class WearableDataBase(BaseModel):
+    date: datetime
+    step_count: int = 0
+    resting_heart_rate: Optional[float] = None
+
+class WearableDataCreate(WearableDataBase):
+    pass
+
+class WearableData(WearableDataBase):
+    id: int
+    user_id: int
+    created_at: datetime
     
     class Config:
         from_attributes = True

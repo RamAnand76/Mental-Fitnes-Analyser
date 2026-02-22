@@ -18,7 +18,15 @@ This backend API analyzes mental fitness, tracks user moods, and provides AI-pow
     *   Generates personalized Weekly/Monthly wellness reports based on your journal history.
     *   Provides actionable advice and summarizes recurring themes in your life.
 
-4.  **Secure Authentication**
+4.  **Voice Journaling (Acoustic & Emotion AI)**
+    *   Secure audio journal uploads using **librosa** for acoustic parsing (pitch and speed).
+    *   **Emotion Detection**: Uses locally hosted **HuggingFace Transformers** to identify emotional undertones in your speech.
+
+5.  **Wearable Syncing & Correlation**
+    *   Secure **Google Fit API** connectivity.
+    *   Correlates historical physical signals (Step Count, Heart Rate) directly against your mood and vocal traits using Pandas Pearson Correlation algorithms to uncover unique insights.
+
+6.  **Secure Authentication**
     *   Full user management (Signup/Login).
     *   **JWT (JSON Web Tokens)** for stateless, secure API access.
     *   Password hashing using **Bcrypt**.
@@ -28,10 +36,11 @@ This backend API analyzes mental fitness, tracks user moods, and provides AI-pow
 ## 🛠️ Tech Stack
 
 *   **Framework**: FastAPI (Python)
-*   **Database**: PostgreSQL (via SQLAlchemy ORM)
-*   **Authentication**: OAuth2 with JWT
+*   **Database**: PostgreSQL / SQLite (via SQLAlchemy ORM)
+*   **Authentication**: OAuth2 with JWT & Google OAuth 2.0 (Wearables)
 *   **Machine Learning**: Scikit-Learn (Random Forest)
-*   **NLP**: VADER Sentiment Analysis
+*   **NLP & Audio Processing**: VADER Sentiment Analysis, Librosa, HuggingFace Transformers
+*   **Data Science**: Pandas (Correlation Matrix)
 *   **Generative AI**: Google Gemini Pro
 
 ---
@@ -107,6 +116,11 @@ Open **[http://localhost:8000/docs](http://localhost:8000/docs)** for the intera
 ### Prediction
 *   `POST /predict`: Submit survey responses to get a Treatment recommendation.
 
+### Voice & Wearables
+*   `POST /voice/upload`: Upload an audio file (.wav, .mp3, .m4a) for acoustic and emotion analysis.
+*   `GET /wearables/auth/google/login`: Initiates the Google Fit OAuth 2.0 flow for syncing data.
+*   `POST /wearables/sync`: Pull latest steps and heart rate from connected Google accounts.
+*   `GET /insights/correlations`: Generate Pearson correlations between physical stats and voice metrics to uncover insights.
 ---
 
 ## 🧠 AI Models Explained
