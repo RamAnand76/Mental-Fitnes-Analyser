@@ -18,9 +18,11 @@ This backend API analyzes mental fitness, tracks user moods, and provides AI-pow
     *   Generates personalized Weekly/Monthly wellness reports based on your journal history.
     *   Provides actionable advice and summarizes recurring themes in your life.
 
-4.  **Voice Journaling (Acoustic & Emotion AI)**
+4.  **Voice Journaling (Acoustic, Emotion & Speech AI)**
     *   Secure audio journal uploads using **librosa** for acoustic parsing (pitch and speed).
     *   **Emotion Detection**: Uses locally hosted **HuggingFace Transformers** to identify emotional undertones in your speech.
+    *   **Transcription**: Integrates **OpenAI Whisper (Tiny)** to automatically transcribe your voice audio into full text formats locally.
+    *   **Base64 Storage Engine**: Audio files are not stored on the disk; instead, they are converted into pure **Base64** text strings and injected directly into the SQLite/PostgreSQL Database for highly portable JSON transit.
 
 5.  **Wearable Syncing & Correlation**
     *   Secure **Google Fit API** connectivity.
@@ -39,7 +41,7 @@ This backend API analyzes mental fitness, tracks user moods, and provides AI-pow
 *   **Database**: PostgreSQL / SQLite (via SQLAlchemy ORM)
 *   **Authentication**: OAuth2 with JWT & Google OAuth 2.0 (Wearables)
 *   **Machine Learning**: Scikit-Learn (Random Forest)
-*   **NLP & Audio Processing**: VADER Sentiment Analysis, Librosa, HuggingFace Transformers
+*   **NLP & Audio Processing**: VADER Sentiment Analysis, Librosa, HuggingFace Transformers, OpenAI Whisper (Speech-to-Text)
 *   **Data Science**: Pandas (Correlation Matrix)
 *   **Generative AI**: Google Gemini Pro
 
@@ -117,7 +119,8 @@ Open **[http://localhost:8000/docs](http://localhost:8000/docs)** for the intera
 *   `POST /predict`: Submit survey responses to get a Treatment recommendation.
 
 ### Voice & Wearables
-*   `POST /voice/upload`: Upload an audio file (.wav, .mp3, .m4a) for acoustic and emotion analysis.
+*   `POST /voice/upload`: Upload an audio file (.wav, .mp3, .m4a, .ogg) for acoustic, emotion, and text transcription analysis. Audio data is serialized to Base64.
+*   `GET /voice/journals`: Fetch all historical audio recordings for a user, returned seamlessly in JSON via the Base64 strings.
 *   `GET /wearables/auth/google/login`: Initiates the Google Fit OAuth 2.0 flow for syncing data.
 *   `POST /wearables/sync`: Pull latest steps and heart rate from connected Google accounts.
 *   `GET /insights/correlations`: Generate Pearson correlations between physical stats and voice metrics to uncover insights.
@@ -133,3 +136,6 @@ A rule-based sentiment analysis tool specifically tuned for social media. It und
 
 ### 3. Google Gemini (Wellness Reports)
 A Large Language Model (LLM) that reads your recent journal entries and synthesizes them into a coherent, empathetic summary with actionable mental health advice.
+
+### 4. OpenAI Whisper (Speech Transcription)
+A highly resilient, open-source automatic speech recognition (ASR) system. Implemented directly in Python (using the local lightweight `tiny` model) to accurately transcribe user audio diaries into text.

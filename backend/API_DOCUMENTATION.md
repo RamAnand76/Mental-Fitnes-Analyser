@@ -26,7 +26,7 @@ The Mental Health Tracker API provides a RESTful interface for:
 
 - **User Authentication**: Signup, login, token refresh, and logout.
 - **Journal Management**: Create, read, update, and delete personal journal entries with automatic sentiment analysis.
-- **Voice Journaling**: Audio recording upload and AI processing for Pitch, Speed, and dominant emotional labels.
+- **Voice Journaling**: Audio recording upload and AI processing for Pitch, Speed, Transcription, and dominant emotional labels. This audio is stored entirely as Base64.
 - **Wearable Integration**: Google OAuth 2.0 authorization and integration with Google Fit to store daily Steps and Resting Heart Rates.
 - **AI-Powered Insights**: Generate weekly/monthly wellness reports from journal entries using Google Gemini.
 - **Correlation Engine**: Algorithm to match physical tracking data against acoustic voice metrics.
@@ -548,7 +548,7 @@ The following questions are presented to the user. Each question has specific va
 
 #### `POST /voice/upload`
 
-Upload a voice recording. The system will extract acoustic features (pitch, speed) via `librosa`, and output a dominant emotion prediction string via Hugging Face.
+Upload a voice recording. The system will extract acoustic features (pitch, speed) via `librosa`, and output a dominant emotion prediction string via Hugging Face. Furthermore, it will run `openai-whisper` to transcribe the audio into text, and save the audio itself into the SQLite database as an encoded Base64 string.
 
 **Query Parameters:**
 | Parameter | Type | Required | Description |
@@ -559,7 +559,7 @@ Upload a voice recording. The system will extract acoustic features (pitch, spee
 
 | Field        | Type   | Required | Description |
 | ------------ | ------ | -------- | ----------- |
-| `audio_file` | File   | Yes      | File body (.wav, .mp3, .m4a) |
+| `audio_file` | File   | Yes      | File body (.wav, .mp3, .m4a, .ogg) |
 
 **Success Response (200 OK):**
 ```json
@@ -575,6 +575,33 @@ Upload a voice recording. The system will extract acoustic features (pitch, spee
     }
   }
 }
+```
+
+---
+
+#### `GET /voice/journals`
+
+Retrieve a list of all historical voice recordings and insights for a specific user.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `user_id` | int  | Yes      | Your local system User ID. |
+
+**Success Response (200 OK):**
+```json
+[
+  {
+    "transcription": "I'm having a really great day today.",
+    "pitch_mean": 154.2,
+    "speed_rate": 115.0,
+    "dominant_emotion": "happy",
+    "id": 1,
+    "user_id": 1,
+    "audio_base64": "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA...",
+    "created_at": "2026-02-22T12:00:00"
+  }
+]
 ```
 
 ---
@@ -666,7 +693,8 @@ Calculates localized Pearson correlations joining user Wearable logs (Steps, HR)
 | Field              | Type     | Description                                |
 | ------------------ | -------- | ------------------------------------------ |
 | `id`               | int      | Internal Database ID.                      |
-| `file_path`        | string   | Local path to audio.                       |
+| `audio_base64`     | string   | Raw base64 string of the Audio Data.       |
+| `transcription`    | string   | Text transcription via Whisper AI.         |
 | `pitch_mean`       | float    | F0 Hz Base Frequency via Librosa.          |
 | `speed_rate`       | float    | Speech Speed/BPM.                          |
 | `dominant_emotion` | string   | Result category of the HF transformer.     |

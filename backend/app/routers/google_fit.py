@@ -21,8 +21,11 @@ router = APIRouter(
 # These will need to be provided by the user in the .env or directly here for testing
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID", "")
-REDIRECT_URI = "http://localhost:8000/api/v1/wearables/auth/google/callback"
+GOOGLE_PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID", "mental-fitness-tracker")
+REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI", 
+    "http://localhost:8000/wearables/auth/google/callback"
+)
 
 SCOPES = [
     'https://www.googleapis.com/auth/fitness.activity.read',
@@ -66,7 +69,7 @@ async def google_login(user_id: int):
         authorization_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
-            prompt='consent' # Force consent to ensure we get a refresh token
+            prompt='consent select_account'
         )
         
         # Save state to link back to the user
@@ -162,12 +165,10 @@ async def sync_wearable_data(user_id: int, db: Session = Depends(get_db)):
         aggregate_request = {
             "aggregateBy": [
                 {
-                    "dataTypeName": "com.google.step_count.delta",
-                    "dataSourceId": "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps"
+                    "dataTypeName": "com.google.step_count.delta"
                 },
                 {
-                    "dataTypeName": "com.google.heart_rate.bpm",
-                    "dataSourceId": "derived:com.google.heart_rate.bpm:com.google.android.gms:merge_heart_rate_bpm"
+                    "dataTypeName": "com.google.heart_rate.bpm"
                 }
             ],
             "bucketByTime": { "durationMillis": 86400000 }, # Group by day (24 hours)
