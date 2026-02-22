@@ -9,10 +9,13 @@ from datetime import datetime
 import librosa
 import numpy as np
 import soundfile as sf
+import base64
+import whisper
 from transformers import pipeline
 
 from app.database import get_db
 from app.models import User, VoiceJournal
+from app import schemas
 
 router = APIRouter(
     prefix="/voice",
@@ -26,10 +29,22 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("uploads/audio")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# We use a global variable to load the pipeline once during startup to avoid latency
+# We use global variables to load pipelines once during startup to avoid latency
 emotion_classifier = None
+whisper_model = None
 
 TARGET_SR = 16000  # Standard sample rate for speech models
+
+def get_whisper_model():
+    """Lazy load the Whisper tiny model for transcription"""
+    global whisper_model
+    if whisper_model is None:
+        logger.info("Loading Whisper transcription model...")
+        try:
+            whisper_model = whisper.load_model("tiny")
+        except Exception as e:
+            logger.error(f"Failed to load Whisper model: {e}")
+    return whisper_model
 
 
 def get_emotion_classifier():
@@ -174,14 +189,31 @@ async def upload_voice_journal(
         predictions.sort(key=lambda x: x['score'], reverse=True)
         dominant_emotion = predictions[0]['label'] if predictions else "unknown"
 
+        # --- NEW: Whisper Transcription ---
+        logger.info(f"Transcribing audio for {safe_filename}...")
+        w_model = get_whisper_model()
+        transcription_text = "Transcription unavailable."
+        
+        if w_model:
+            # Whisper can accept the file path directly or a normalized numpy array 
+            # (must be float32, 16kHz, mono - which audio_16k is)
+            result = w_model.transcribe(audio_16k)
+            transcription_text = result.get("text", "").strip()
+
+        # --- NEW: Base64 Encoding ---
+        # Instead of saving the path, we encode the completely raw bytes to base64
+        with open(file_path, "rb") as audio_binary:
+            encoded_bytes = base64.b64encode(audio_binary.read())
+            base64_string = encoded_bytes.decode('utf-8')
+
         # 6. Save to DB
         journal_entry = VoiceJournal(
             user_id=user.id,
-            file_path=str(file_path),
+            audio_base64=base64_string,
             pitch_mean=pitch,
             speed_rate=speed,
             dominant_emotion=dominant_emotion,
-            transcription="Transcriptions disabled for current version."
+            transcription=transcription_text
         )
 
         db.add(journal_entry)
@@ -209,3 +241,20 @@ async def upload_voice_journal(
         if file_path.exists():
             file_path.unlink()
         raise HTTPException(status_code=500, detail=f"Failed to process audio: {str(e)}")
+    finally:
+        # ALWAYS clean up the temporary file, success or failure
+        if file_path.exists():
+            file_path.unlink()
+
+
+@router.get("/journals", response_model=list[schemas.VoiceJournal])
+def get_voice_journals(user_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve all voice journal entries for a user, including the base64 audio and extracted features.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    journals = db.query(VoiceJournal).filter(VoiceJournal.user_id == user.id).order_by(VoiceJournal.created_at.desc()).all()
+    return journals

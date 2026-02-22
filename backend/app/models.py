@@ -33,7 +33,7 @@ class VoiceJournal(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    file_path = Column(String)
+    audio_base64 = Column(Text)  # Store base64 encoded audio strings
     transcription = Column(Text, nullable=True)
     pitch_mean = Column(Float, nullable=True)
     speed_rate = Column(Float, nullable=True)

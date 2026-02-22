@@ -57,12 +57,12 @@ class VoiceJournalBase(BaseModel):
     dominant_emotion: Optional[str] = None
 
 class VoiceJournalCreate(VoiceJournalBase):
-    file_path: str
+    audio_base64: str
 
 class VoiceJournal(VoiceJournalBase):
     id: int
     user_id: int
-    file_path: str
+    audio_base64: str
     created_at: datetime
     
     @property
