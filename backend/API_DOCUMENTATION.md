@@ -623,7 +623,7 @@ Initiate the Google OAuth 2.0 process for authorizing Google Fit parameters.
 
 #### `POST /wearables/sync`
 
-Pull user's Step Count and Resting Heart Rate averages for the current 24-hour cycle.
+Pulls user's Step Count and Resting Heart Rate averages for the last 30 days (1-day buckets) from Google Fit and persists them in the database, avoiding duplicates. Also returns today's current data separately in the `data` obj.
 
 **Query Parameters:**
 | Parameter | Type | Required | Description |
@@ -638,7 +638,19 @@ Pull user's Step Count and Resting Heart Rate averages for the current 24-hour c
     "steps": 10543,
     "heart_rate": 65.5,
     "date": "2026-02-22T13:45:00.000"
-  }
+  },
+  "history": [
+    {
+      "steps": 10543,
+      "heart_rate": 65.5,
+      "date": "2026-02-22T13:00:00"
+    },
+    {
+      "steps": 8000,
+      "heart_rate": 68.0,
+      "date": "2026-02-21T13:00:00"
+    }
+  ]
 }
 ```
 

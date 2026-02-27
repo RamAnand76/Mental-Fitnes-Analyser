@@ -139,9 +139,11 @@ def get_user_credentials(user: User):
 @router.post("/sync")
 async def sync_wearable_data(user_id: int, db: Session = Depends(get_db)):
     """
-    Fetches the latest data from Google Fit API for the given user and stores it.
+    Fetches the last 30 days of data from Google Fit API for the given user and stores it.
     Currently pulls: Step Count and Resting Heart Rate.
     """
+    from datetime import timedelta
+    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -154,11 +156,11 @@ async def sync_wearable_data(user_id: int, db: Session = Depends(get_db)):
         # Build the Google Fit API client
         fitness_service = build('fitness', 'v1', credentials=creds)
         
-        # Calculate time range: Today, midnight to current time
+        # Calculate time range: Last 30 days to now
         now = datetime.now()
-        startOfDay = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_time = (now - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
         
-        START_TIME_MILLIS = int(startOfDay.timestamp() * 1000)
+        START_TIME_MILLIS = int(start_time.timestamp() * 1000)
         END_TIME_MILLIS = int(now.timestamp() * 1000)
         
         # Payload to fetch aggregated steps and heart rate
@@ -180,53 +182,76 @@ async def sync_wearable_data(user_id: int, db: Session = Depends(get_db)):
             userId='me', body=aggregate_request
         ).execute()
         
-        # Parse response
-        steps = 0
-        heart_rate_avg = None
+        # Clear existing records for this user in the last 30 days to avoid duplicates
+        db.query(WearableData).filter(
+            WearableData.user_id == user.id,
+            WearableData.date >= start_time,
+            WearableData.date <= now
+        ).delete()
         
-        if 'bucket' in response and len(response['bucket']) > 0:
-            dataset = response['bucket'][0].get('dataset', [])
-            
-            for data in dataset:
-                source = data.get('dataSourceId', '')
-                points = data.get('point', [])
-                
-                if not points: continue
-                
-                # Check for step count data
-                if 'step_count' in source:
-                    for p in points:
-                        vals = p.get('value', [])
-                        if vals and 'intVal' in vals[0]:
-                            steps += vals[0]['intVal']
-                            
-                # Check for heart rate data
-                elif 'heart_rate' in source:
-                    for p in points:
-                        vals = p.get('value', [])
-                        if vals and 'fpVal' in vals[0]:
-                            # Getting an average mapping for the bucket
-                            # Google frequently returns fpVal for floats
-                            heart_rate_avg = vals[0]['fpVal']
+        synced_data = []
+        today_steps = 0
+        today_heart_rate = None
         
-        # Save to database
-        wearable_record = WearableData(
-            user_id=user.id,
-            date=now,
-            step_count=steps,
-            resting_heart_rate=heart_rate_avg
-        )
-        db.add(wearable_record)
+        if 'bucket' in response:
+            for bucket in response['bucket']:
+                bucket_start = int(bucket['startTimeMillis'])
+                bucket_date = datetime.fromtimestamp(bucket_start / 1000.0)
+                
+                steps = 0
+                heart_rate_avg = None
+                
+                dataset = bucket.get('dataset', [])
+                for data in dataset:
+                    source = data.get('dataSourceId', '')
+                    points = data.get('point', [])
+                    
+                    if not points: continue
+                    
+                    # Check for step count data
+                    if 'step_count' in source:
+                        for p in points:
+                            vals = p.get('value', [])
+                            if vals and 'intVal' in vals[0]:
+                                steps += vals[0]['intVal']
+                                
+                    # Check for heart rate data
+                    elif 'heart_rate' in source:
+                        for p in points:
+                            vals = p.get('value', [])
+                            if vals and 'fpVal' in vals[0]:
+                                heart_rate_avg = vals[0]['fpVal']
+                
+                # Only insert if there's actual data
+                if steps > 0 or heart_rate_avg is not None:
+                    wearable_record = WearableData(
+                        user_id=user.id,
+                        date=bucket_date,
+                        step_count=steps,
+                        resting_heart_rate=heart_rate_avg
+                    )
+                    db.add(wearable_record)
+                    
+                    synced_data.append({
+                        "steps": steps,
+                        "heart_rate": heart_rate_avg,
+                        "date": bucket_date.isoformat()
+                    })
+                    
+                    # Track latest day data
+                    today_steps = steps
+                    today_heart_rate = heart_rate_avg
+        
         db.commit()
-        db.refresh(wearable_record)
         
         return {
             "message": "Successfully synchronized Google Fit data",
             "data": {
-                "steps": steps,
-                "heart_rate": heart_rate_avg,
+                "steps": today_steps,
+                "heart_rate": today_heart_rate,
                 "date": now.isoformat()
-            }
+            },
+            "history": synced_data
         }
         
     except Exception as e:
