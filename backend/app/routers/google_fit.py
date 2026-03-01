@@ -72,8 +72,11 @@ async def google_login(user_id: int):
             prompt='consent select_account'
         )
         
-        # Save state to link back to the user
-        oauth_states[state] = user_id
+        # Save state to link back to the user and preserve PKCE code_verifier
+        oauth_states[state] = {
+            "user_id": user_id,
+            "code_verifier": getattr(flow, 'code_verifier', None)
+        }
         
         return {"authorization_url": authorization_url}
         
@@ -90,14 +93,18 @@ async def google_callback(state: str, code: str, db: Session = Depends(get_db)):
     """
     if state not in oauth_states:
         raise HTTPException(status_code=400, detail="Invalid state parameter or session expired.")
-    
-    user_id = oauth_states.pop(state)
+    session_data = oauth_states.pop(state)
+    user_id = session_data["user_id"]
+    code_verifier = session_data.get("code_verifier")
     
     try:
         config = get_client_config()
         flow = InstalledAppFlow.from_client_config(config, SCOPES, state=state)
         flow.redirect_uri = REDIRECT_URI
         
+        if code_verifier:
+            flow.code_verifier = code_verifier
+            
         # Trade code for tokens
         flow.fetch_token(code=code)
         credentials = flow.credentials
