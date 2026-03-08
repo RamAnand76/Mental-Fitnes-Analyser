@@ -1,6 +1,7 @@
 import json
 import os
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 from google.oauth2.credentials import Credentials
@@ -145,7 +146,8 @@ async def google_callback(
         user.google_fit_token = json.dumps(creds_data)
         db.commit()
         
-        return {"message": "Google Fit successfully connected!", "user_id": user_id}
+        # Redirect the user back to the frontend dashboard
+        return RedirectResponse(url="http://localhost:3000/dashboard")
         
     except Exception as e:
         logger.error(f"Error in OAuth callback: {e}")
