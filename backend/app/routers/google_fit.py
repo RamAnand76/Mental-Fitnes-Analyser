@@ -11,6 +11,7 @@ import logging
 from app.database import get_db
 from app.models import User, WearableData
 from app.schemas import WearableDataBase
+from app.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/wearables",
@@ -57,9 +58,10 @@ def get_client_config():
 
 
 @router.get("/auth/google/login")
-async def google_login(user_id: int):
+async def google_login(current_user: User = Depends(get_current_user)):
     """
-    Initiates the Google OAuth 2.0 flow for a specific user to connecting their Fit account.
+    Initiates the Google OAuth 2.0 flow for the currently logged-in user.
+    Requires a valid JWT Bearer token.
     """
     try:
         config = get_client_config()
@@ -72,9 +74,9 @@ async def google_login(user_id: int):
             prompt='consent select_account'
         )
         
-        # Save state to link back to the user and preserve PKCE code_verifier
+        # Save state to link back to the authenticated user and preserve PKCE code_verifier
         oauth_states[state] = {
-            "user_id": user_id,
+            "user_id": current_user.id,
             "code_verifier": getattr(flow, 'code_verifier', None)
         }
         
@@ -86,14 +88,30 @@ async def google_login(user_id: int):
 
 
 @router.get("/auth/google/callback")
-async def google_callback(state: str, code: str, db: Session = Depends(get_db)):
+async def google_callback(
+    state: str,
+    db: Session = Depends(get_db),
+    code: str = None,
+    error: str = None
+):
     """
     Handles the callback from Google after user grants permission.
     Exchanges code for tokens and saves them to the User model.
+    Also handles the case where the user denies access (error=access_denied).
     """
+    # Always clean up the state regardless of success or failure
     if state not in oauth_states:
         raise HTTPException(status_code=400, detail="Invalid state parameter or session expired.")
-    session_data = oauth_states.pop(state)
+    
+    session_data = oauth_states.pop(state)  # Clean up in all cases
+
+    # Handle user denying the consent screen gracefully
+    if error:
+        raise HTTPException(status_code=403, detail=f"Google authorization was denied: {error}")
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code from Google.")
+
     user_id = session_data["user_id"]
     code_verifier = session_data.get("code_verifier")
     
@@ -144,14 +162,14 @@ def get_user_credentials(user: User):
 
 
 @router.post("/sync")
-async def sync_wearable_data(user_id: int, db: Session = Depends(get_db)):
+async def sync_wearable_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
-    Fetches the last 30 days of data from Google Fit API for the given user and stores it.
-    Currently pulls: Step Count and Resting Heart Rate.
+    Fetches the last 30 days of data from Google Fit API for the currently logged-in user and stores it.
+    Requires a valid JWT Bearer token. Currently pulls: Step Count and Resting Heart Rate.
     """
     from datetime import timedelta
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = current_user  # Use the authenticated user directly
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
